@@ -40,19 +40,35 @@ class PayPal {
 
 	//these constants you have to obtain from PayPal
 	//Step-by-step manual is here: https://cms.paypal.com/us/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_api_NVPAPIBasics
-	const API_USERNAME = "seller_1292143286_biz_api1.maly.cz";
-	const API_PASSWORD = "Q7*******JE";
-	const API_SIGNATURE = "AFcW*****V6l";
-	const PP_RETURN = "http://test/pp/ppreturn.php";
-	const PP_CANCEL = "http://test/pp/ppcancel.php";
+	var $api_username;
+	var $api_password;
+	var $api_signature;
+	var $pp_return;
+	var $pp_cancel;
 
 	private $endpoint;
 	private $host;
 	private $gate;
 
-	function __construct($real = false) {
-		$this->endpoint = '/nvp';
-		if ($real) {
+  function __construct($config = array()) {
+    if(empty($config)) { throw new Exception('Please provide your paypal configuration'); }
+
+    if(!isset($config['api_username'])) { throw new Exception('Paypal api_username needed'); }
+    if(!isset($config['api_password'])) { throw new Exception('Paypal api_username needed'); }
+    if(!isset($config['api_signature'])) { throw new Exception('Paypal api_signature needed'); }
+    if(!isset($config['pp_return'])) { throw new Exception('Paypal pp_return url needed'); }
+    if(!isset($config['pp_cancel'])) { throw new Exception('Paypal pp_cancel url needed'); }
+    if(!isset($config['on_sandbox'])) { $config['on_sandbox'] = true; }
+
+    $this->api_username = $config['api_username'];
+    $this->api_password = $config['api_password'];
+    $this->api_signature = $config['api_signature'];
+    $this->pp_return = $config['pp_return'];
+    $this->pp_cancel = $config['pp_cancel'];
+  
+    $this->endpoint = '/nvp';
+
+		if (!$config['on_sandbox']) {
 			$this->host = "api-3t.paypal.com";
 			$this->gate = 'https://www.paypal.com/cgi-bin/webscr?';
 		} else {
@@ -73,9 +89,9 @@ class PayPal {
 	}
 
 	private function buildQuery($data = array()){
-		$data['USER'] = self::API_USERNAME;
-		$data['PWD'] = self::API_PASSWORD;
-		$data['SIGNATURE'] = self::API_SIGNATURE;
+		$data['USER'] = $this->api_username;
+		$data['PWD'] = $this->api_password;
+		$data['SIGNATURE'] = $this->api_signature;
 		$data['VERSION'] = '52.0';
 		$query = http_build_query($data);
 		return $query;
@@ -95,18 +111,18 @@ class PayPal {
 	 * 
 	 * @return array error info
 	 */
-	public function doExpressCheckout($amount, $desc, $invoice='', $currency='USD'){
+  public function doExpressCheckout($amount, $desc, $invoice='', $currency='USD'){
 		$data = array(
 		'PAYMENTACTION' =>'Sale',
 		'AMT' =>$amount,
-		'RETURNURL' => self::PP_RETURN,
-		'CANCELURL'  => self::PP_CANCEL,
+		'RETURNURL' => $this->pp_return,
+		'CANCELURL'  => $this->pp_cancel,
 		'DESC'=>$desc,
 		'NOSHIPPING'=>"1",
 		'ALLOWNOTE'=>"1",
 		'CURRENCYCODE'=>$currency,
 		'METHOD' =>'SetExpressCheckout');
-		
+
 		$data['CUSTOM'] = $amount.'|'.$currency.'|'.$invoice;
 		if ($invoice) $data['INVNUM'] = $invoice;
 
